@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { quoteEntry, groupInput, isOpen, withActualPrice } from "../src/domain.js";
 import { menu } from "../public/menu.js";
+import { menus } from "../public/stores.js";
 import { readFileSync } from "node:fs";
 const reference = JSON.parse(readFileSync(new URL("../data/att-price-reference.json", import.meta.url), "utf8"));
 
@@ -78,4 +79,53 @@ test("主揪校正實際單價，其他人無法設定或覆蓋", () => {
   assert.equal(withActualPrice(quoteEntry(base), { actualUnitPrice: 1 }, null, false).unitPrice, 40);
   assert.equal(withActualPrice(quoteEntry(base), { actualUnitPrice: 1 }, actual, false).unitPrice, 45);
   assert.equal(withActualPrice(quoteEntry({ ...base, size: "M" }), { actualUnitPrice: 1 }, actual, false).unitPrice, 35);
+});
+const guiji = menus["guiji-a11"];
+const guijiBase = { ...base, drinkId: "guiji-black" };
+test("龜記 A11 全品项與官網專用菜單轉錄相符", () => {
+  const ref = JSON.parse(readFileSync(new URL("../data/guiji-a11-price-reference.json", import.meta.url), "utf8"));
+  assert.equal(guiji.drinks.length, ref.drinks.length);
+  for (const d of ref.drinks) {
+    const result = quoteEntry({ ...guijiBase, drinkId: d.id, sugar: d.fixedSugar ? -1 : Math.max(30, d.minSugar ?? 0) }, guiji);
+    assert.equal(result.drinkName, d.name);
+    assert.equal(result.unitPrice, d.price, d.name);
+  }
+  for (const a of ref.addons) assert.equal(guiji.addons.find(item => item.id === a.id).price, a.price);
+});
+test("開團可選龜記，舊開團請求預設青山；拒絕未知門市", () => {
+  const input = { title: "下午茶", hostName: "主揪", date: "2026-10-12" };
+  assert.equal(groupInput(input).storeId, "peak-att");
+  assert.equal(groupInput({ ...input, storeId: "guiji-a11" }).storeId, "guiji-a11");
+  for (const storeId of ["missing", "__proto__", ["peak-att"]]) assert.throws(() => groupInput({ ...input, storeId }));
+});
+test("龜記 A11 使用專用價目與加料費，不接受青山品項", () => {
+  assert.equal(guiji.drinks.length, 29);
+  assert.equal(quoteEntry(guijiBase, guiji).unitPrice, 45);
+  assert.equal(quoteEntry({ ...guijiBase, drinkId: "guiji-grapefruit-green" }, guiji).unitPrice, 85);
+  assert.equal(quoteEntry({ ...guijiBase, drinkId: "guiji-pearl-milk", addons: ["guiji-pearl"], quantity: 2 }, guiji).total, 164);
+  assert.equal(quoteEntry({ ...guijiBase, addons: ["guiji-aloe", "guiji-hongxuan-jelly"] }, guiji).unitPrice, 85);
+  assert.throws(() => quoteEntry(base, guiji));
+  assert.throws(() => quoteEntry(guijiBase));
+  assert.throws(() => quoteEntry({ ...guijiBase, addons: ["amber"] }, guiji));
+});
+test("龜記 A11 冷飲限制與紅萱茶凍在後端驗證", () => {
+  assert.ok(quoteEntry({ ...guijiBase, temperature: "溫熱", ice: "不適用" }, guiji));
+  assert.throws(() => quoteEntry({ ...guijiBase, drinkId: "guiji-grapefruit-green", temperature: "溫熱", ice: "不適用" }, guiji));
+  assert.throws(() => quoteEntry({ ...guijiBase, addons: ["guiji-hongxuan-jelly"], temperature: "溫熱", ice: "不適用" }, guiji));
+  assert.ok(quoteEntry({ ...guijiBase, addons: ["guiji-pearl"], temperature: "溫熱", ice: "不適用" }, guiji));
+});
+test("龜記使用八分糖，蜂蜜品項甜度固定，部分果茶最低一分", () => {
+  assert.ok(quoteEntry({ ...guijiBase, sugar: 80 }, guiji));
+  assert.throws(() => quoteEntry({ ...guijiBase, sugar: 70 }, guiji));
+  assert.ok(quoteEntry({ ...guijiBase, drinkId: "guiji-honey-green", sugar: -1 }, guiji));
+  assert.throws(() => quoteEntry({ ...guijiBase, drinkId: "guiji-honey-green", sugar: 0 }, guiji));
+  assert.throws(() => quoteEntry({ ...guijiBase, sugar: -1 }, guiji));
+  assert.throws(() => quoteEntry({ ...guijiBase, drinkId: "guiji-orange-green", sugar: 0 }, guiji));
+  assert.ok(quoteEntry({ ...guijiBase, drinkId: "guiji-orange-green", sugar: 10 }, guiji));
+});
+test("各店價格校正保留相對應菜單版本", () => {
+  const actual = withActualPrice(quoteEntry(guijiBase, guiji), { actualUnitPrice: 40, priceNote: "門市優惠" }, null, true, guiji);
+  assert.equal(actual.menuVersion, guiji.version);
+  assert.equal(actual.estimatedUnitPrice, 45);
+  assert.equal(actual.total, 40);
 });

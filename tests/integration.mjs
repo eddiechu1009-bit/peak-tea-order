@@ -5,6 +5,7 @@ const owner = randomBytes(32).toString("hex");
 const stranger = randomBytes(32).toString("hex");
 let group;
 let timedGroup;
+let guijiGroup;
 let passed = 0;
 async function request(path, method = "GET", data, extra = {}) {
   const response = await fetch(`${base}${path}`, {
@@ -76,8 +77,31 @@ try {
   check(tampered.status === 200 && tampered.data.unitPrice === 55, "同事不能覆蓋主揪實付單價");
   const noteUpdate = await request(path, "PATCH", { note: "信義 ATT 店價目" }, host);
   check(noteUpdate.status === 200 && noteUpdate.data.note === "信義 ATT 店價目" && noteUpdate.data.open, "主揪更新門市備註不改收單狀態");
+  const storeList = await request("/api/stores");
+  check(storeList.status === 200 && storeList.data.some(s => s.id === "guiji-a11"), "門市列表包含龜記 A11");
+  const badStore = await request("/api/groups", "POST", { title: "bad", hostName: "bad", date: "2026-10-12", storeId: "__proto__" });
+  check(badStore.status === 400 && (await request("/api/menu?store=missing")).status === 404, "拒絕不存在的門市");
+  const gc = await request("/api/groups", "POST", { title: "龜記 API 測試（將刪除）", hostName: "測試主揪", date: "2026-10-12", storeId: "guiji-a11" });
+  guijiGroup = gc.data;
+  const gp = `/api/groups/${guijiGroup.id}`;
+  const gr = await request(gp);
+  check(gc.status === 201 && gr.data.storeId === "guiji-a11" && gr.data.menu.drinks.length === 29, "龜記團固定使用 A11 菜單");
+  const wrongDrink = await request(`${gp}/entries`, "POST", { ...entry, id: randomUUID() });
+  check(wrongDrink.status === 400, "龜記訂單拒絕其他店的飲料");
+  const ge = { ...entry, id: randomUUID(), drinkId: "guiji-grapefruit-green", addons: ["guiji-pearl"], quantity: 2, storeId: "peak-att" };
+  const ga = await request(`${gp}/entries`, "POST", ge);
+  check(ga.status === 201 && ga.data.total === 194 && ga.data.menuVersion.startsWith("guiji-a11"), "按訂單門市重算價格，忽略填單者指定的店與金額");
+  const changedStore = await request(gp, "PATCH", { storeId: "peak-att", note: "測試" }, { "X-Host-Key": guijiGroup.hostKey });
+  check(changedStore.data.storeId === "guiji-a11", "建團後不混用門市");
+  const disallowedHot = await request(`${gp}/entries`, "POST", { ...ge, id: randomUUID(), temperature: "溫熱", ice: "不適用" });
+  const honey = await request(`${gp}/entries`, "POST", { ...ge, id: randomUUID(), drinkId: "guiji-honey-green", addons: [], sugar: -1, quantity: 1 });
+  check(disallowedHot.status === 400 && honey.status === 201 && honey.data.total === 60, "龜記冷熱與固定甜度由伺服器驗證");
+  check((await request(path)).data.entries.length === 8 && (await request(gp)).data.entries.length === 2, "同日期的兩家店明細與金額分開");
   console.log(`\n${passed} 個整合檢查通過`);
 } finally {
+  if (guijiGroup?.id) {
+    assert.equal((await request(`/api/groups/${guijiGroup.id}`, "DELETE", undefined, { "X-Host-Key": guijiGroup.hostKey })).status, 200);
+  }
   if (timedGroup?.id) {
     assert.equal((await request(`/api/groups/${timedGroup.id}`, "DELETE", undefined, { "X-Host-Key": timedGroup.hostKey })).status, 200);
   }

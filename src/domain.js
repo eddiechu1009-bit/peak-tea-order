@@ -1,4 +1,5 @@
 import { menu } from "../public/menu.js";
+import { menus, DEFAULT_STORE_ID } from "../public/stores.js";
 
 export class AppError extends Error {
   constructor(message, status = 400) { super(message); this.status = status; }
@@ -21,6 +22,8 @@ export function validId(id) {
 }
 
 export function groupInput(input) {
+  const storeId = input.storeId ?? DEFAULT_STORE_ID;
+  if (typeof storeId !== "string" || !Object.hasOwn(menus, storeId)) throw new AppError("請選擇支援的飲料門市");
   const title = text(input.title, 60, "團名", true);
   const hostName = text(input.hostName, 30, "主揪名字", true);
   const date = text(input.date, 10, "日期", true);
@@ -35,17 +38,23 @@ export function groupInput(input) {
     if (!Number.isFinite(d.valueOf()) || d.valueOf() <= Date.now()) throw new AppError("截止時間需晚於現在");
     deadline = d.toISOString();
   }
-  return { title, hostName, date, deadline, note: text(input.note ?? "", 300, "團購備註") };
+  return { title, hostName, date, deadline, storeId, note: text(input.note ?? "", 300, "團購備註") };
 }
 
-export function quoteEntry(input) {
+export function quoteEntry(input, selectedMenu = menu) {
+  const menu = selectedMenu;
   const name = text(input.name, 30, "名字", true);
   const drink = menu.drinks.find(d => d.id === input.drinkId);
   if (!drink) throw new AppError("請選擇菜單內的飲料");
   if (!Object.hasOwn(drink.prices, input.size)) throw new AppError("這款飲料沒有這個杯型");
   if (!menu.temperatures.includes(input.temperature)) throw new AppError("請選擇冷熱");
   if (!menu.sugars.some(s => s.value === input.sugar)) throw new AppError("請選擇甜度");
-  if (input.sugar < (drink.minSugar ?? 0)) throw new AppError(`${drink.name}最低${drink.minSugar === 50 ? "半糖" : "1 分糖"}`);
+  if (drink.fixedSugar !== undefined) {
+    if (input.sugar !== drink.fixedSugar) throw new AppError(`${drink.name}甜度固定，依門市配方`);
+  } else if (input.sugar < (drink.minSugar ?? 0)) {
+    throw new AppError(`${drink.name}最低${drink.minSugar === 50 ? "半糖" : "1 分糖"}`);
+  }
+  if (!(drink.temperatures ?? menu.temperatures).includes(input.temperature)) throw new AppError(`${drink.name}不提供這個冷熱選項`);
   if (!Array.isArray(input.addons) || input.addons.length > menu.addons.length ||
       new Set(input.addons).size !== input.addons.length) throw new AppError("加料選項不正確");
   const addons = input.addons.map(id => {
@@ -54,6 +63,7 @@ export function quoteEntry(input) {
     return addon;
   });
   const hasCap = drink.cap || addons.some(a => a.cap);
+  if (addons.some(a => a.coldOnly) && input.temperature !== "冰") throw new AppError("紅萱茶凍僅供冷飲");
   if (hasCap && (input.temperature !== "冰" || input.ice !== "少冰")) throw new AppError("奶蓋飲品僅供冰飲、少冰");
   if (input.temperature === "冰" && !menu.ice.includes(input.ice)) throw new AppError("請選擇冰塊");
   if (input.temperature !== "冰" && input.ice !== "不適用") throw new AppError("常溫或溫熱飲品不需冰塊");
@@ -75,7 +85,7 @@ export function isOpen(group, now = Date.now()) {
   return group.status === "open" && (!group.deadline || new Date(group.deadline).valueOf() > now);
 }
 
-export function withActualPrice(quote, input, previous, isHost) {
+export function withActualPrice(quote, input, previous, isHost, selectedMenu = menu) {
   const sameRecipe = previous && ["drinkId", "size", "temperature", "sugar", "ice", "oatMilk"]
     .every(key => previous[key] === quote[key]) &&
     JSON.stringify([...previous.addons].sort()) === JSON.stringify([...quote.addons].sort());
@@ -89,5 +99,5 @@ export function withActualPrice(quote, input, previous, isHost) {
     priceNote = actualUnitPrice === null ? "" : text(input.priceNote ?? "", 100, "價格校正說明", true);
   }
   const unitPrice = actualUnitPrice ?? quote.unitPrice;
-  return { ...quote, estimatedUnitPrice: quote.unitPrice, actualUnitPrice, priceNote, unitPrice, total: unitPrice * quote.quantity, menuVersion: menu.version };
+  return { ...quote, estimatedUnitPrice: quote.unitPrice, actualUnitPrice, priceNote, unitPrice, total: unitPrice * quote.quantity, menuVersion: selectedMenu.version };
 }

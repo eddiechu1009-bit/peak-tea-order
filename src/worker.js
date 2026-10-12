@@ -1,4 +1,4 @@
-import { menu } from "../public/menu.js";
+import { menus, stores, DEFAULT_STORE_ID } from "../public/stores.js";
 import { AppError, validId, text, groupInput, quoteEntry, isOpen, withActualPrice } from "./domain.js";
 
 const headers = {
@@ -38,11 +38,12 @@ function outputEntry(row) {
   return { ...JSON.parse(row.data), id: row.id, version: row.version, createdAt: row.created_at, updatedAt: row.updated_at };
 }
 async function groupResult(db, group, host) {
+  const menu = menus[group.store_id ?? DEFAULT_STORE_ID];
   const result = await db.prepare("SELECT id, data, version, created_at, updated_at FROM entries WHERE group_id = ? ORDER BY created_at, id").bind(group.id).all();
   return {
     id: group.id, title: group.title, date: group.date, hostName: group.host_name,
     status: group.status, deadline: group.deadline, note: group.note, createdAt: group.created_at,
-    open: isOpen(group), isHost: host, branch: menu.branch, menuVersion: menu.version,
+    open: isOpen(group), isHost: host, storeId: menu.storeId, shop: menu.shop, branch: menu.branch, menuVersion: menu.version, menu,
     entries: result.results.map(outputEntry), serverTime: now()
   };
 }
@@ -89,18 +90,24 @@ async function route(request, env, url) {
     await DB.prepare("SELECT 1").first();
     return json({ ok: true });
   }
-  if (url.pathname === "/api/menu" && method === "GET") return json(menu);
+  if (url.pathname === "/api/stores" && method === "GET") return json(stores);
+  if (url.pathname === "/api/menu" && method === "GET") {
+    const id = url.searchParams.get("store") ?? DEFAULT_STORE_ID;
+    if (!Object.hasOwn(menus, id)) throw new AppError("找不到這家飲料門市", 404);
+    return json(menus[id]);
+  }
   if (url.pathname === "/api/groups" && method === "POST") {
     const data = groupInput(await body(request));
     const id = crypto.randomUUID();
     const hostKey = token();
-    await DB.prepare("INSERT INTO groups (id, title, date, host_name, host_hash, deadline, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(id, data.title, data.date, data.hostName, await hash(hostKey), data.deadline, data.note, now()).run();
+    await DB.prepare("INSERT INTO groups (id, title, date, host_name, host_hash, deadline, note, created_at, store_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(id, data.title, data.date, data.hostName, await hash(hostKey), data.deadline, data.note, now(), data.storeId).run();
     return json({ id, hostKey }, 201);
   }
   const match = url.pathname.match(/^\/api\/groups\/([^/]+)(?:\/entries(?:\/([^/]+))?)?$/);
   if (!match) throw new AppError("找不到此功能", 404);
   const group = await getGroup(DB, match[1]);
+  const menu = menus[group.store_id ?? DEFAULT_STORE_ID];
   const hostHash = await secret(request, "X-Host-Key");
   const isHost = !!hostHash && hostHash === group.host_hash;
   const isEntries = url.pathname.includes("/entries");
@@ -138,7 +145,7 @@ async function route(request, env, url) {
       return json(outputEntry(existing));
     }
     if (!isOpen(group)) throw new AppError("已截止收單，請聯絡主揪", 409);
-    const data = withActualPrice(quoteEntry(input), input, null, isHost);
+    const data = withActualPrice(quoteEntry(input, menu), input, null, isHost, menu);
     const timestamp = now();
     const result = await DB.prepare(
       `INSERT INTO entries (id, group_id, owner_hash, data, created_at, updated_at)
@@ -168,7 +175,7 @@ async function route(request, env, url) {
     let result;
     let data;
     if (method === "PUT") {
-      data = withActualPrice(quoteEntry(input), input, JSON.parse(entry.data), isHost);
+      data = withActualPrice(quoteEntry(input, menu), input, JSON.parse(entry.data), isHost, menu);
       result = await DB.prepare(`UPDATE entries SET data = ?, version = version + 1, updated_at = ? WHERE ${condition}`)
         .bind(JSON.stringify(data), timestamp, group.id, entry.id, input.version, group.id, isHost ? 1 : 0, timestamp).run();
     } else {

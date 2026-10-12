@@ -1,5 +1,7 @@
-import { menu } from "./menu.js?v=att-20261012";
+import { menus, stores as bundledStores, DEFAULT_STORE_ID } from "./stores.js?v=stores-20261012";
 import { API_ORIGIN } from "./config.js";
+let menu = menus[DEFAULT_STORE_ID];
+let stores = bundledStores;
 
 const app = document.querySelector("#app");
 const dialog = document.querySelector("#drink-dialog");
@@ -11,11 +13,12 @@ const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", 
 const dateLabel = date => new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "long", day: "numeric", weekday: "long" }).format(new Date(`${date}T12:00:00+08:00`));
 const deadlineLabel = value => value ? new Intl.DateTimeFormat("zh-TW", { timeZone: "Asia/Taipei", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value)) : "主揪手動截止";
 const sugarLabel = value => menu.sugars.find(s => s.value === value)?.label ?? "";
+const sizeLabel = size => menu.sizeLabels?.[size] ?? (size === "M" ? "中杯 M" : "大杯 L");
 const addonNames = entry => [
   ...entry.addons.map(id => menu.addons.find(a => a.id === id)?.name).filter(Boolean),
   ...(entry.oatMilk ? ["換燕麥奶"] : [])
 ];
-const choices = entry => `${entry.size === "M" ? "中杯" : "大杯"} · ${entry.temperature === "冰" ? entry.ice : entry.temperature} · ${sugarLabel(entry.sugar)}${addonNames(entry).length ? ` · ${addonNames(entry).join("＋")}` : ""}`;
+const choices = entry => `${sizeLabel(entry.size)} · ${entry.temperature === "冰" ? entry.ice : entry.temperature} · ${sugarLabel(entry.sugar)}${addonNames(entry).length ? ` · ${addonNames(entry).join("＋")}` : ""}`;
 let stored;
 let storageAvailable = true;
 try { stored = JSON.parse(localStorage.getItem(storageKey) ?? "{}"); } catch { stored = {}; }
@@ -73,32 +76,41 @@ async function api(path, options = {}) {
   } finally { clearTimeout(timeout); }
 }
 function mount(html) { app.innerHTML = html; app.setAttribute("aria-busy", "false"); }
+function updateMenuSource() {
+  const link = document.querySelector(".menu-source");
+  link.href = menu.sourceUrl;
+  link.innerHTML = `${esc(menu.shop)}菜單 <span aria-hidden="true">↗</span>`;
+  document.querySelector("#menu-check").textContent = `${menu.shop} ${menu.branch}價目 · 核對 ${menu.checkedAt} · 現場金額為準`;
+}
 function home() {
+  if (Object.hasOwn(menus, stored.storeId)) menu = menus[stored.storeId];
+  updateMenuSource();
   const groups = Object.entries(stored.groups).filter(([, g]) => g.title).sort((a, b) => b[1].date.localeCompare(a[1].date));
   mount(`
     <section class="home-hero">
       <div class="hero-copy">
-        <span class="eyebrow">${esc(menu.branch)} · 同事飲料團</span>
+        <span class="eyebrow">青山 ATT · 龜記 A11 · 同事飲料團</span>
         <h1>忙裡，<br>一起喝杯好茶。</h1>
         <p>開一團，分享給同事。<br>大家自己選，杯數和金額幫你算好。</p>
         <a class="button primary" href="#create">開一個飲料團 <span aria-hidden="true">＋</span></a>
         <div class="hero-pills"><span>免登入填單</span><span>每團獨立連結</span><span>自動彙整</span></div>
       </div>
-      <div class="hero-art"><img src="./tea-art.svg" alt="兩杯茶飲與青山的插畫"><span class="art-caption">一杯給自己，一杯給好同事。</span></div>
+      <div class="hero-art"><img src="./tea-art.svg" alt="兩杯茶飲的插畫"><span class="art-caption">一杯給自己，一杯給好同事。</span></div>
     </section>
     <section class="create-section" id="create">
       <div class="section-intro"><span class="eyebrow">LET'S GET STARTED</span><h2>今天誰來揪？</h2><p>先定日期，再把連結丟進群組。</p>
         <ol class="steps"><li><span>01</span>開團、分享連結</li><li><span>02</span>同事選茶、填名字</li><li><span>03</span>帶著清單去買</li></ol>
       </div>
       <form id="create-form" class="create-card">
+        <label>飲料店／門市<select name="storeId" id="store-select" required>${stores.map(s => `<option value="${esc(s.id)}" ${s.id === menu.storeId ? "selected" : ""}>${esc(s.shop)} · ${esc(s.branch)}</option>`).join("")}</select><small id="store-hint">依所選門市的菜單計價。</small></label>
         <div class="field-row">
           <label>訂單日期<input type="date" name="date" value="${today()}" required></label>
           <label>主揪名字<input name="hostName" value="${esc(stored.name ?? "")}" placeholder="怎麼稱呼你？" maxlength="30" autocomplete="name" required></label>
         </div>
-        <label>這團叫什麼<input name="title" value="青山下午茶" placeholder="例如：週一補充茶能量" maxlength="60" required></label>
+        <label>這團叫什麼<input name="title" value="${menu.storeId === "guiji-a11" ? "龜記" : "青山"}下午茶" placeholder="例如：週一補充茶能量" maxlength="60" required></label>
         <div class="field-row">
           <label>截止時間 <span class="optional">選填</span><input name="deadline" type="datetime-local"><small>留空就由你手動截止，時間為台灣時間。</small></label>
-          <label>門市<input value="青山青茶 · ${esc(menu.branch)}" readonly><small>採用 ATT 百貨門市價格。</small></label>
+          <label>門市菜單<a id="store-menu" class="store-menu-link" href="${esc(menu.sourceUrl)}" target="_blank" rel="noopener noreferrer">查看所選門市菜單 ↗</a><small>每一團使用所選門市的品項與價格。</small></label>
         </div>
         <label>給同事的小提醒 <span class="optional">選填</span><textarea name="note" rows="2" maxlength="300" placeholder="例如：15:00 出發買，請在出發前填好。"></textarea></label>
         <p class="form-error" id="create-error" role="alert" hidden></p>
@@ -106,9 +118,28 @@ function home() {
         <p class="fine-print">拿到訂單連結的人可看本團名字與飲料。主揪管理連結請自己保存。</p>
       </form>
     </section>
-    ${groups.length ? `<section class="recent-section"><div class="section-heading"><h2>我開過的團</h2><span class="muted">保存在這台裝置</span></div><div class="recent-grid">${groups.map(([id, g]) => `<a class="recent-card" href="${esc(guestUrl(id))}"><span class="eyebrow">${esc(g.date)}</span><strong>${esc(g.title)}</strong><span>回到這團 <span aria-hidden="true">↗</span></span></a>`).join("")}</div></section>` : ""}
+    ${groups.length ? `<section class="recent-section"><div class="section-heading"><h2>我開過的團</h2><span class="muted">保存在這台裝置</span></div><div class="recent-grid">${groups.map(([id, g]) => `<a class="recent-card" href="${esc(guestUrl(id))}"><span class="eyebrow">${esc(g.date)} · ${esc(menus[g.storeId ?? DEFAULT_STORE_ID]?.shop ?? "")}</span><strong>${esc(g.title)}</strong><span>回到這團 <span aria-hidden="true">↗</span></span></a>`).join("")}</div></section>` : ""}
   `);
   document.querySelector("#create-form").addEventListener("submit", createGroup);
+  document.querySelector("#store-select").addEventListener("change", async event => {
+    const id = event.target.value;
+    const form = document.querySelector("#create-form");
+    const title = form.elements.title;
+    if (["青山下午茶", "龜記下午茶"].includes(title.value)) title.value = `${id === "guiji-a11" ? "龜記" : "青山"}下午茶`;
+    menu = menus[id];
+    stored.storeId = id; save();
+    updateMenuSource();
+    document.querySelector("#store-menu").href = menu.sourceUrl;
+    document.querySelector("#store-hint").textContent = `${menu.shop} ${menu.branch}專用價目`;
+    try {
+      const current = await api(`/api/menu?store=${encodeURIComponent(id)}`);
+      menus[id] = current;
+      if (document.querySelector("#store-select")?.value === id) {
+        menu = current; updateMenuSource();
+        document.querySelector("#store-menu").href = menu.sourceUrl;
+      }
+    } catch { toast("目前顯示已核對的門市價目"); }
+  });
 }
 async function createGroup(event) {
   event.preventDefault();
@@ -128,7 +159,8 @@ async function createGroup(event) {
     values.deadline = values.deadline ? new Date(`${values.deadline}:00+08:00`).toISOString() : null;
     const result = await api("/api/groups", { method: "POST", body: JSON.stringify(values) });
     stored.name = values.hostName;
-    stored.groups[result.id] = { hostKey: result.hostKey, title: values.title, date: values.date };
+    stored.groups[result.id] = { hostKey: result.hostKey, title: values.title, date: values.date, storeId: values.storeId };
+    stored.storeId = values.storeId;
     save();
     location.href = hostUrl(result.id);
   } catch (e) {
@@ -143,8 +175,10 @@ async function refresh(initial = false) {
     const group = await api(`/api/groups/${encodeURIComponent(groupId)}`);
     const previousOpen = state.group?.open;
     state.group = group;
+    menu = group.menu ?? menus[group.storeId ?? DEFAULT_STORE_ID];
+    updateMenuSource();
     if (stored.groups[group.id]) {
-      stored.groups[group.id] = { ...stored.groups[group.id], title: group.title, date: group.date };
+      stored.groups[group.id] = { ...stored.groups[group.id], title: group.title, date: group.date, storeId: group.storeId ?? DEFAULT_STORE_ID };
       save();
     }
     if (initial) renderGroup();
@@ -175,7 +209,7 @@ function renderGroup() {
   mount(`
     <section class="group-hero">
       <div><div class="group-meta"><span class="eyebrow">${esc(dateLabel(g.date))}</span><span id="group-status"></span></div>
-        <h1>${esc(g.title)}</h1><p>青山青茶 · ${esc(menu.branch)} <span class="meta-dot">·</span> 主揪 ${esc(g.hostName)}</p>
+        <h1>${esc(g.title)}</h1><p>${esc(menu.shop)} · ${esc(menu.branch)} <span class="meta-dot">·</span> 主揪 ${esc(g.hostName)}</p>
         ${g.note ? `<div class="group-note">${esc(g.note)}</div>` : ""}
       </div>
       <div class="group-actions"><button class="button primary" id="share-group">分享填單連結 <span aria-hidden="true">↗</span></button><span class="deadline">截止：${esc(deadlineLabel(g.deadline))}</span></div>
@@ -229,7 +263,7 @@ function renderTab() {
   if (state.tab === "menu") {
     content.innerHTML = `<div class="menu-toolbar"><div class="category-scroll"><button class="category ${state.category === "all" ? "active" : ""}" data-category="all">全部茶飲</button>${menu.categories.map(c => `<button class="category ${state.category === c.id ? "active" : ""}" data-category="${c.id}">${esc(c.name)}</button>`).join("")}</div><label class="search-box"><span aria-hidden="true">⌕</span><input id="menu-search" type="search" value="${esc(state.search)}" placeholder="找找想喝的茶" aria-label="搜尋飲料"></label></div>
       <div id="closed-notice"></div><div id="drink-grid" class="drink-grid"></div>
-      <p class="menu-footnote">採用信義 ATT 百貨門市中／大杯價格。奶蓋僅少冰、果茶至少 1 分糖、冬露至少半糖；其他冷熱供應請依門市確認。</p>`;
+      <p class="menu-footnote">${esc(menu.notes ?? "採用信義 ATT 百貨門市中／大杯價格。奶蓋僅少冰、果茶至少 1 分糖、冬露至少半糖；其他冷熱供應請依門市確認。")}</p>`;
     content.querySelectorAll("[data-category]").forEach(button => button.addEventListener("click", () => {
       state.category = button.dataset.category;
       content.querySelectorAll("[data-category]").forEach(b => b.classList.toggle("active", b.dataset.category === state.category));
@@ -250,7 +284,7 @@ function renderMenu() {
       <div class="drink-card-top"><span class="drink-category">${esc(menu.categories.find(c => c.id === drink.category).name)}</span><span class="drink-symbol" aria-hidden="true">${drink.category === "fruit" ? "◒" : drink.category === "toppings" ? "⠿" : "♧"}</span></div>
       <h3>${esc(drink.name)}</h3><p class="drink-description">${esc(drink.description ?? (drink.included ? `已含${drink.included.join("、")}` : drink.cap ? "香濃奶蓋・僅少冰" : drink.minSugar === 50 ? "冬露風味・至少半糖" : "依喜好選冷熱與甜度"))}</p>
       <div class="drink-tags">${drink.tags.map(tag => `<span class="${tag === "推薦" ? "recommended" : ""}">${esc(tag)}</span>`).join("")}</div>
-      <div class="drink-bottom"><span class="drink-prices">${Object.entries(drink.prices).map(([size, price]) => `<span>${size} <b>$${price}</b></span>`).join("")}</span><span class="add-circle" aria-hidden="true">＋</span></div>
+      <div class="drink-bottom"><span class="drink-prices">${Object.entries(drink.prices).map(([size, price]) => `<span>${esc(menu.sizeLabels?.[size] ?? size)} <b>$${price}</b></span>`).join("")}</span><span class="add-circle" aria-hidden="true">＋</span></div>
     </button>`).join("") : `<div class="empty-state"><h3>還沒找到這款茶</h3><p>換個關鍵字，或看看其他分類。</p></div>`;
   document.querySelectorAll("[data-drink]").forEach(button => button.addEventListener("click", () => openDrink(button.dataset.drink)));
 }
@@ -299,7 +333,7 @@ function renderPurchase() {
 function purchaseText() {
   const g = state.group;
   return [
-    `${g.date}｜${g.title}`, `青山青茶・${menu.branch}｜主揪 ${g.hostName}`,
+    `${g.date}｜${g.title}`, `${menu.shop}・${menu.branch}｜主揪 ${g.hostName}`,
     ...purchasingGroups().map((e, i) => `${i + 1}. ${e.drinkName} ×${e.quantity}\n   ${choices(e)}${e.note ? `｜備註：${e.note}` : ""}\n   ${e.names.join("、")}｜${money(e.total)}`),
     `共 ${g.entries.reduce((s, e) => s + e.quantity, 0)} 杯｜預估 ${money(g.entries.reduce((s, e) => s + e.total, 0))}`,
     "實際供應與金額依門市現場為準。"
@@ -313,7 +347,7 @@ function downloadCsv() {
     return `"${safe.replaceAll('"', '""')}"`;
   };
   const rows = [["日期", "團名", "名字", "飲料", "杯型", "冷熱", "甜度", "冰量", "加料／奶類", "杯數", "單價", "金額", "備註", "菜單每杯估價", "價格校正說明"],
-    ...state.group.entries.map(e => [state.group.date, state.group.title, e.name, e.drinkName, e.size, e.temperature, sugarLabel(e.sugar), e.ice, addonNames(e).join("、"), e.quantity, e.unitPrice, e.total, e.note, e.estimatedUnitPrice ?? e.unitPrice, e.priceNote ?? ""])];
+    ...state.group.entries.map(e => [state.group.date, state.group.title, e.name, e.drinkName, sizeLabel(e.size), e.temperature, sugarLabel(e.sugar), e.ice, addonNames(e).join("、"), e.quantity, e.unitPrice, e.total, e.note, e.estimatedUnitPrice ?? e.unitPrice, e.priceNote ?? ""])];
   const blob = new Blob(["\ufeff" + rows.map(row => row.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob); link.download = `青山飲料團_${state.group.date}.csv`;
@@ -355,22 +389,23 @@ function openDrink(id, entry = null) {
   state.originalEntry = entry;
   state.draft = entry ? { ...entry, addons: [...entry.addons], editing: true } : {
     id: crypto.randomUUID(), drinkId: id, name: stored.name ?? "", size: Object.hasOwn(drink.prices, "L") ? "L" : "M",
-    temperature: "冰", sugar: Math.max(30, drink.minSugar ?? 0), ice: drink.cap ? "少冰" : "少冰",
+    temperature: "冰", sugar: drink.fixedSugar ?? Math.max(30, drink.minSugar ?? 0), ice: "少冰",
     addons: [], oatMilk: false, quantity: 1, note: "", editing: false
   };
   const d = state.draft;
   dialog.innerHTML = `<form id="drink-form">
     <div class="dialog-header"><div><span class="eyebrow">${esc(menu.categories.find(c => c.id === drink.category).name)}</span><h2 id="drink-dialog-title">${esc(drink.name)}</h2></div><button type="button" class="icon-button" id="close-dialog" aria-label="關閉點餐視窗">×</button></div>
     ${drink.included ? `<p class="included-note">這杯已含${esc(drink.included.join("、"))}，下方為額外加一份。</p>` : ""}
+    ${drink.includedSugar ? `<p class="included-note">原料本身含糖；「不另加糖」仍有原料甜味。</p>` : ""}
     <label class="name-field">你的名字<input name="name" id="entry-name" maxlength="30" required placeholder="讓主揪知道這杯是誰的" value="${esc(d.name)}" autocomplete="name"></label>
-    <fieldset><legend>杯型</legend><div class="option-grid two">${Object.entries(drink.prices).map(([size, price]) => `<label class="option"><input type="radio" name="size" value="${size}" ${d.size === size ? "checked" : ""}><span>${size === "M" ? "中杯 M" : "大杯 L"}<small>$${price}</small></span></label>`).join("")}</div></fieldset>
+    <fieldset><legend>杯型</legend><div class="option-grid two">${Object.entries(drink.prices).map(([size, price]) => `<label class="option"><input type="radio" name="size" value="${size}" ${d.size === size ? "checked" : ""}><span>${esc(sizeLabel(size))}<small>$${price}</small></span></label>`).join("")}</div></fieldset>
     <fieldset><legend>冷熱</legend><div class="option-grid three">${menu.temperatures.map(temp => `<label class="option"><input type="radio" name="temperature" value="${temp}" ${d.temperature === temp ? "checked" : ""}><span>${temp === "冰" ? "冰飲" : temp}</span></label>`).join("")}</div></fieldset>
-    <fieldset><legend>甜度 <small id="sugar-rule"></small></legend><div class="option-grid three">${menu.sugars.map(s => `<label class="option"><input type="radio" name="sugar" value="${s.value}" ${d.sugar === s.value ? "checked" : ""}><span>${s.label}<small>${s.percent}</small></span></label>`).join("")}</div></fieldset>
+    <fieldset><legend>甜度 <small id="sugar-rule"></small></legend><div class="option-grid three">${menu.sugars.filter(s => drink.fixedSugar !== undefined ? s.value === drink.fixedSugar : s.value >= 0).map(s => `<label class="option"><input type="radio" name="sugar" value="${s.value}" ${d.sugar === s.value ? "checked" : ""}><span>${s.label}<small>${s.percent}</small></span></label>`).join("")}</div></fieldset>
     <fieldset id="ice-field"><legend>冰塊 <small id="ice-rule"></small></legend><div class="option-grid four">${menu.ice.map(ice => `<label class="option"><input type="radio" name="ice" value="${ice}" ${d.ice === ice ? "checked" : ""}><span>${ice}</span></label>`).join("")}</div></fieldset>
     <fieldset><legend>額外加料 <small>可複選</small></legend><div class="addon-grid">${menu.addons.map(a => `<label class="addon-option"><input type="checkbox" name="addons" value="${a.id}" ${d.addons.includes(a.id) ? "checked" : ""}><span>${esc(a.name)}</span><small>+$${a.price}</small></label>`).join("")}</div></fieldset>
     ${drink.oatMilk ? `<label class="oat-option"><input type="checkbox" name="oatMilk" ${d.oatMilk ? "checked" : ""}><span>升級燕麥奶</span><small id="oat-price"></small></label>` : ""}
     <div class="field-row"><label>杯數<input name="quantity" type="number" min="1" max="20" step="1" value="${d.quantity}" required></label><label>備註 <span class="optional">選填</span><input name="note" maxlength="200" value="${esc(d.note)}" placeholder="特殊需求，主揪現場確認"></label></div>
-    ${state.group.isHost ? `<div class="field-row"><label>門市實際每杯單價 <span class="optional">選填</span><input name="actualUnitPrice" type="number" min="0" max="1000" step="1" value="${d.actualUnitPrice ?? ""}" placeholder="留空依 ATT 菜單計算"></label><label>價格校正說明<input name="priceNote" maxlength="100" value="${esc(d.priceNote ?? "")}" placeholder="例如：門市原價、活動折扣"></label></div>` : ""}
+    ${state.group.isHost ? `<div class="field-row"><label>門市實際每杯單價 <span class="optional">選填</span><input name="actualUnitPrice" type="number" min="0" max="1000" step="1" value="${d.actualUnitPrice ?? ""}" placeholder="留空依所選門市菜單計算"></label><label>價格校正說明<input name="priceNote" maxlength="100" value="${esc(d.priceNote ?? "")}" placeholder="例如：門市原價、活動折扣"></label></div>` : ""}
     <p class="form-error" id="drink-error" role="alert" hidden></p>
     <p id="price-breakdown" class="fine-print"></p>
     <div class="dialog-footer"><div><span>每杯 <b id="unit-price"></b></span><strong id="draft-total"></strong></div><button class="button primary" id="submit-drink" type="submit">${d.editing ? "儲存修改" : "加入訂單"} <span aria-hidden="true">＋</span></button></div>
@@ -398,17 +433,19 @@ function syncDraft() {
   d.addons = values.getAll("addons");
   d.oatMilk = values.get("oatMilk") === "on";
   const cap = drink.cap || d.addons.some(id => menu.addons.find(a => a.id === id).cap);
-  d.temperature = cap ? "冰" : values.get("temperature");
+  const coldOnly = cap || d.addons.some(id => menu.addons.find(a => a.id === id).coldOnly);
+  const temperatures = coldOnly ? ["冰"] : drink.temperatures ?? menu.temperatures;
+  d.temperature = temperatures.includes(values.get("temperature")) ? values.get("temperature") : temperatures[0];
   form.querySelectorAll('[name="temperature"]').forEach(input => {
-    input.disabled = cap && input.value !== "冰";
+    input.disabled = !temperatures.includes(input.value);
     input.checked = input.value === d.temperature;
   });
-  d.sugar = Math.max(Number(values.get("sugar")), drink.minSugar ?? 0);
+  d.sugar = drink.fixedSugar ?? Math.max(Number(values.get("sugar")), drink.minSugar ?? 0);
   form.querySelectorAll('[name="sugar"]').forEach(input => {
     input.disabled = Number(input.value) < (drink.minSugar ?? 0);
     input.checked = Number(input.value) === d.sugar;
   });
-  document.querySelector("#sugar-rule").textContent = drink.minSugar === 50 ? "冬露至少半糖" : drink.minSugar ? "不提供無糖" : "";
+  document.querySelector("#sugar-rule").textContent = drink.fixedSugar !== undefined ? "依門市配方，無法調整" : drink.minSugar === 50 ? "冬露至少半糖" : drink.minSugar ? "最低一分糖" : "";
   d.ice = d.temperature === "冰" ? (cap ? "少冰" : values.get("ice") ?? "少冰") : "不適用";
   document.querySelector("#ice-field").hidden = d.temperature !== "冰";
   form.querySelectorAll('[name="ice"]').forEach(input => {
@@ -477,11 +514,11 @@ dialog.addEventListener("click", event => {
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
   }
 });
-try {
-  Object.assign(menu, await api("/api/menu"));
-} catch {
-  toast("暫時無法確認最新門市價目，先顯示已核對的 ATT 價格");
-}
+try { stores = await api("/api/stores"); }
+catch { toast("目前顯示已核對的門市清單"); }
+const initialStore = Object.hasOwn(menus, stored.storeId) ? stored.storeId : DEFAULT_STORE_ID;
+try { menus[initialStore] = await api(`/api/menu?store=${encodeURIComponent(initialStore)}`); }
+catch { toast("暫時無法確認最新門市價目，先顯示已核對的價格"); }
 if (groupId) {
   refresh(true);
   setInterval(() => { if (!document.hidden && !state.busy) refresh(); }, 10000);

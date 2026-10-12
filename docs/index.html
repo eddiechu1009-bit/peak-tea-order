@@ -5,24 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#234b3b">
   <meta name="referrer" content="no-referrer">
-  <meta name="description" content="青山青茶同事揪團點飲料。開一團、分享連結，杯數和金額自動算好。">
-  <title>青山一起喝｜同事飲料揪團</title>
+  <meta name="description" content="青山青茶 ATT 店、龜記 A11 店同事揪團點飲料。選門市、開一團、分享連結，杯數和金額自動算好。">
+  <title>一起喝｜同事飲料揪團</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=att-20261012">
-  <script type="module" src="./app.js?v=att-20261012"></script>
+  <link rel="stylesheet" href="./styles.css?v=stores-20261012">
+  <script type="module" src="./app.js?v=stores-20261012"></script>
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="./" aria-label="青山一起喝首頁">
-      <span class="brand-mark" aria-hidden="true">青</span>
-      <span>青山一起喝<small>TEA TIME, TOGETHER.</small></span>
+    <a class="brand" href="./" aria-label="一起喝首頁">
+      <span class="brand-mark" aria-hidden="true">茶</span>
+      <span>一起喝<small>TEA TIME, TOGETHER.</small></span>
     </a>
-    <a class="menu-source" href="https://order.nidin.shop/menu/27427" target="_blank" rel="noopener noreferrer">ATT 門市菜單 <span aria-hidden="true">↗</span></a>
+    <a class="menu-source" href="https://order.nidin.shop/menu/27427" target="_blank" rel="noopener noreferrer">門市菜單 <span aria-hidden="true">↗</span></a>
   </header>
   <main id="app" aria-busy="true"><div class="loading">正在準備好茶…</div></main>
   <footer class="site-footer">
-    <span>同事揪團小工具 · 非青山官方訂購平台</span>
-    <span>信義 ATT 店價目 · 核對 2026.10.12 · 現場金額為準</span>
+    <span>同事揪團小工具 · 非店家官方訂購平台</span>
+    <span id="menu-check">門市價目 · 核對 2026.10.12 · 現場金額為準</span>
   </footer>
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   <dialog id="drink-dialog" aria-labelledby="drink-dialog-title"></dialog>

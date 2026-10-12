@@ -9,6 +9,7 @@
     "test": "node --test tests/domain.test.js",
     "test:integration": "node tests/integration.mjs",
     "test:browser": "node tests/browser.mjs",
+    "test:stores": "node tests/stores-browser.mjs",
     "prepare:pages": "node scripts/prepare-pages.mjs",
     "deploy": "wrangler deploy"
   },
