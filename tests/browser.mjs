@@ -57,7 +57,7 @@ try {
     await guestA.locator('[name="ice"][value="微冰"]').check();
     await guestA.locator('[name="addons"][value="amber"]').check();
     await guestA.locator('[name="quantity"]').fill("2");
-    await expect(guestA.locator("#draft-total")).toHaveText("NT$ 90");
+    await expect(guestA.locator("#draft-total")).toHaveText("NT$ 100");
   });
   pass("免登入同事選飲料、半糖微冰加珍珠，兩杯正確計價");
   const guestB = await page({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: "zh-TW", timezoneId: "Asia/Taipei" });
@@ -67,7 +67,7 @@ try {
     await expect(guestB.locator('[name="temperature"][value="溫熱"]')).toBeDisabled();
     await expect(guestB.locator('[name="ice"][value="去冰"]')).toBeDisabled();
     await expect(guestB.locator('[name="ice"][value="少冰"]')).toBeChecked();
-    await expect(guestB.locator("#draft-total")).toHaveText("NT$ 55");
+    await expect(guestB.locator("#draft-total")).toHaveText("NT$ 60");
     await noOverflow(guestB, "390px 手機點餐視窗無水平溢位");
     await guestB.screenshot({ path: new URL("mobile-drink.png", output).pathname.replace(/^\/C:/, "C:"), fullPage: true });
   });
@@ -77,7 +77,7 @@ try {
   await add(guestC, "lychee-spring", "=1+2", async () => {
     await expect(guestC.locator('[name="sugar"][value="0"]')).toBeDisabled();
     await guestC.locator('[name="note"]').fill("<img src=x onerror=alert(1)>");
-    await expect(guestC.locator("#draft-total")).toHaveText("NT$ 75");
+    await expect(guestC.locator("#draft-total")).toHaveText("NT$ 80");
   });
   pass("果茶無糖被停用，特殊名字與備註可安全顯示");
   await guestA.locator("#tab-list").click();
@@ -89,9 +89,9 @@ try {
   await host.locator("#manual-refresh").click();
   await expect(host.locator(".entry-card")).toHaveCount(3);
   await expect(host.locator("[data-edit]")).toHaveCount(3);
-  await expect(host.locator(".total-stat strong")).toHaveText("NT$ 220");
+  await expect(host.locator(".total-stat strong")).toHaveText("NT$ 240");
   assert.equal(await host.locator(".entry-note img").count(), 0);
-  pass("主揪看見全部三筆／四杯／220 元，HTML 備註不執行");
+  pass("主揪看見全部三筆／四杯／240 元，HTML 備註不執行");
   await host.locator("#tab-purchase").click();
   await expect(host.locator(".purchase-item")).toHaveCount(3);
   const downloadPromise = host.waitForEvent("download");
@@ -111,8 +111,15 @@ try {
   await host.locator('[name="quantity"]').fill("1");
   await host.locator("#submit-drink").click();
   await expect(host.locator("#drink-dialog")).not.toBeVisible();
-  await expect(host.locator(".total-stat strong")).toHaveText("NT$ 175");
+  await expect(host.locator(".total-stat strong")).toHaveText("NT$ 190");
   pass("截止後主揪仍能調整飲料");
+  await host.locator("[data-edit]").first().click();
+  await host.locator('[name="actualUnitPrice"]').fill("55");
+  await host.locator('[name="priceNote"]').fill("門市實際單價");
+  await host.locator("#submit-drink").click();
+  await expect(host.locator("#drink-dialog")).not.toBeVisible();
+  await expect(host.locator(".total-stat strong")).toHaveText("NT$ 195");
+  pass("主揪可校正實付單價，總金額同步更新");
   await guestB.locator("#tab-list").click();
   await guestB.locator("#manual-refresh").click();
   await expect(guestB.locator("#group-status")).toContainText("已截止");

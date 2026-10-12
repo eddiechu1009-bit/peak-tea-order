@@ -1,25 +1,37 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { quoteEntry, groupInput, isOpen } from "../src/domain.js";
+import { quoteEntry, groupInput, isOpen, withActualPrice } from "../src/domain.js";
 import { menu } from "../public/menu.js";
+import { readFileSync } from "node:fs";
+const reference = JSON.parse(readFileSync(new URL("../data/att-price-reference.json", import.meta.url), "utf8"));
 
 const base = {
   name: "測試同事", drinkId: "spring-qing", size: "L", temperature: "冰",
   sugar: 30, ice: "少冰", addons: [], oatMilk: false, quantity: 1, note: ""
 };
-test("官方所有杯型價格都可計算，忽略用戶傳入金額", () => {
-  for (const drink of menu.drinks) {
+test("所有價格對照 ATT 門市獨立來源，忽略用戶傳入金額", () => {
+  assert.equal(menu.branch, reference.branch);
+  assert.equal(menu.drinks.length, reference.drinks.length);
+  for (const drink of reference.drinks) {
+    assert.deepEqual(menu.drinks.find(d => d.id === drink.id).prices, drink.prices);
     for (const [size, price] of Object.entries(drink.prices)) {
-      const result = quoteEntry({ ...base, drinkId: drink.id, size, sugar: Math.max(30, drink.minSugar ?? 0), unitPrice: 1, total: 1 });
+      const local = menu.drinks.find(d => d.id === drink.id);
+      const result = quoteEntry({ ...base, drinkId: drink.id, size, sugar: Math.max(30, local.minSugar ?? 0), unitPrice: 1, total: 1 });
       assert.equal(result.unitPrice, price, `${drink.name} ${size}`);
       assert.equal(result.total, price);
     }
   }
+  for (const addon of reference.addons) assert.equal(menu.addons.find(a => a.id === addon.id).price, addon.price);
+});
+test("大杯桂花玄米加海鹽奶蓋為 ATT 原價 70", () => {
+  const result = quoteEntry({ ...base, drinkId: "osmanthus-genmai", sugar: 0, addons: ["salt-cap"] });
+  assert.equal(result.unitPrice, 70);
+  assert.equal(result.total, 70);
 });
 test("加料、燕麥奶依杯型、杯數計費", () => {
-  assert.equal(quoteEntry({ ...base, addons: ["amber", "buckwheat-pearl"], quantity: 3 }).total, (35 + 10 + 15) * 3);
-  assert.equal(quoteEntry({ ...base, drinkId: "summer-latte", size: "M", oatMilk: true }).unitPrice, 60);
-  assert.equal(quoteEntry({ ...base, drinkId: "summer-latte", size: "L", oatMilk: true }).unitPrice, 75);
+  assert.equal(quoteEntry({ ...base, addons: ["amber", "buckwheat-pearl"], quantity: 3 }).total, (40 + 10 + 15) * 3);
+  assert.equal(quoteEntry({ ...base, drinkId: "summer-latte", size: "M", oatMilk: true }).unitPrice, 65);
+  assert.equal(quoteEntry({ ...base, drinkId: "summer-latte", size: "L", oatMilk: true }).unitPrice, 80);
 });
 test("避免不存在的杯型、加料重複、非那堤換奶", () => {
   assert.throws(() => quoteEntry({ ...base, drinkId: "salt-cap-apple", size: "L" }));
@@ -57,4 +69,13 @@ test("時間到即截止，不能僅依前端判斷", () => {
   assert.equal(isOpen({ status: "open", deadline: null }), true);
   assert.equal(isOpen({ status: "closed", deadline: null }), false);
   assert.equal(isOpen({ status: "open", deadline: "2026-10-12T04:00:00Z" }, Date.parse("2026-10-12T04:00:00Z")), false);
+});
+test("主揪校正實際單價，其他人無法設定或覆蓋", () => {
+  const actual = withActualPrice(quoteEntry({ ...base, quantity: 2 }), { actualUnitPrice: 45, priceNote: "門市活動" }, null, true);
+  assert.equal(actual.estimatedUnitPrice, 40);
+  assert.equal(actual.total, 90);
+  assert.throws(() => withActualPrice(quoteEntry(base), { actualUnitPrice: 45, priceNote: "" }, null, true));
+  assert.equal(withActualPrice(quoteEntry(base), { actualUnitPrice: 1 }, null, false).unitPrice, 40);
+  assert.equal(withActualPrice(quoteEntry(base), { actualUnitPrice: 1 }, actual, false).unitPrice, 45);
+  assert.equal(withActualPrice(quoteEntry({ ...base, size: "M" }), { actualUnitPrice: 1 }, actual, false).unitPrice, 35);
 });

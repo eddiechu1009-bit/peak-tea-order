@@ -1,10 +1,10 @@
-import { menu } from "./menu.js";
+import { menu } from "./menu.js?v=att-20261012";
 import { API_ORIGIN } from "./config.js";
 
 const app = document.querySelector("#app");
 const dialog = document.querySelector("#drink-dialog");
 const storageKey = "peak-tea:v1";
-const state = { group: null, category: "all", search: "", tab: "menu", draft: null, busy: false };
+const state = { group: null, category: "all", search: "", tab: "menu", draft: null, originalEntry: null, busy: false };
 const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
 const money = value => `NT$ ${Number(value).toLocaleString("zh-TW")}`;
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -78,7 +78,7 @@ function home() {
   mount(`
     <section class="home-hero">
       <div class="hero-copy">
-        <span class="eyebrow">信義威秀店 · 同事飲料團</span>
+        <span class="eyebrow">${esc(menu.branch)} · 同事飲料團</span>
         <h1>忙裡，<br>一起喝杯好茶。</h1>
         <p>開一團，分享給同事。<br>大家自己選，杯數和金額幫你算好。</p>
         <a class="button primary" href="#create">開一個飲料團 <span aria-hidden="true">＋</span></a>
@@ -98,7 +98,7 @@ function home() {
         <label>這團叫什麼<input name="title" value="青山下午茶" placeholder="例如：週一補充茶能量" maxlength="60" required></label>
         <div class="field-row">
           <label>截止時間 <span class="optional">選填</span><input name="deadline" type="datetime-local"><small>留空就由你手動截止，時間為台灣時間。</small></label>
-          <label>門市<input value="青山青茶 · 信義威秀店" readonly></label>
+          <label>門市<input value="青山青茶 · ${esc(menu.branch)}" readonly><small>採用 ATT 百貨門市價格。</small></label>
         </div>
         <label>給同事的小提醒 <span class="optional">選填</span><textarea name="note" rows="2" maxlength="300" placeholder="例如：15:00 出發買，請在出發前填好。"></textarea></label>
         <p class="form-error" id="create-error" role="alert" hidden></p>
@@ -175,7 +175,7 @@ function renderGroup() {
   mount(`
     <section class="group-hero">
       <div><div class="group-meta"><span class="eyebrow">${esc(dateLabel(g.date))}</span><span id="group-status"></span></div>
-        <h1>${esc(g.title)}</h1><p>青山青茶 · 信義威秀店 <span class="meta-dot">·</span> 主揪 ${esc(g.hostName)}</p>
+        <h1>${esc(g.title)}</h1><p>青山青茶 · ${esc(menu.branch)} <span class="meta-dot">·</span> 主揪 ${esc(g.hostName)}</p>
         ${g.note ? `<div class="group-note">${esc(g.note)}</div>` : ""}
       </div>
       <div class="group-actions"><button class="button primary" id="share-group">分享填單連結 <span aria-hidden="true">↗</span></button><span class="deadline">截止：${esc(deadlineLabel(g.deadline))}</span></div>
@@ -229,7 +229,7 @@ function renderTab() {
   if (state.tab === "menu") {
     content.innerHTML = `<div class="menu-toolbar"><div class="category-scroll"><button class="category ${state.category === "all" ? "active" : ""}" data-category="all">全部茶飲</button>${menu.categories.map(c => `<button class="category ${state.category === c.id ? "active" : ""}" data-category="${c.id}">${esc(c.name)}</button>`).join("")}</div><label class="search-box"><span aria-hidden="true">⌕</span><input id="menu-search" type="search" value="${esc(state.search)}" placeholder="找找想喝的茶" aria-label="搜尋飲料"></label></div>
       <div id="closed-notice"></div><div id="drink-grid" class="drink-grid"></div>
-      <p class="menu-footnote">菜單單價以官方中／大杯為準。奶蓋僅少冰、果茶至少 1 分糖、冬露至少半糖；其他冷熱供應請依門市確認。</p>`;
+      <p class="menu-footnote">採用信義 ATT 百貨門市中／大杯價格。奶蓋僅少冰、果茶至少 1 分糖、冬露至少半糖；其他冷熱供應請依門市確認。</p>`;
     content.querySelectorAll("[data-category]").forEach(button => button.addEventListener("click", () => {
       state.category = button.dataset.category;
       content.querySelectorAll("[data-category]").forEach(b => b.classList.toggle("active", b.dataset.category === state.category));
@@ -261,7 +261,7 @@ function renderList() {
     <div class="section-heading list-heading"><div><h2>大家的茶，都在這裡。</h2><p class="muted">確認名字和飲料，出發前就不怕漏單。</p></div><button class="text-button" id="manual-refresh">重新整理 ↻</button></div>
     ${entries.length ? `<div class="entry-list">${entries.map(e => `<article class="entry-card">
       <div class="avatar" aria-hidden="true">${esc([...e.name][0])}</div><div class="entry-main"><h3>${esc(e.name)} <span>${esc(e.drinkName)}</span></h3><p>${esc(choices(e))}</p>${e.note ? `<p class="entry-note">備註：${esc(e.note)}</p>` : ""}</div>
-      <div class="entry-price"><strong>${money(e.total)}</strong><span>${e.quantity} 杯 · 每杯 $${e.unitPrice}</span></div>
+      <div class="entry-price"><strong>${money(e.total)}</strong><span>${e.quantity} 杯 · 每杯 $${e.unitPrice}</span>${e.actualUnitPrice !== null && e.actualUnitPrice !== undefined ? `<span>主揪實付校正：${esc(e.priceNote)}</span>` : ""}</div>
       ${canEdit(e) ? `<div class="entry-actions"><button data-edit="${e.id}" class="text-button">修改</button><button data-delete="${e.id}" class="text-button danger">移除</button></div>` : ""}
     </article>`).join("")}</div>` : `<div class="empty-state roomy"><span aria-hidden="true">♧</span><h3>第一杯，就差你了。</h3><p>分享連結給同事，或先幫自己選一杯。</p><button class="button primary" id="go-menu">去選茶</button></div>`}`;
   document.querySelector("#manual-refresh").addEventListener("click", () => refresh());
@@ -299,7 +299,7 @@ function renderPurchase() {
 function purchaseText() {
   const g = state.group;
   return [
-    `${g.date}｜${g.title}`, `青山青茶・信義威秀店｜主揪 ${g.hostName}`,
+    `${g.date}｜${g.title}`, `青山青茶・${menu.branch}｜主揪 ${g.hostName}`,
     ...purchasingGroups().map((e, i) => `${i + 1}. ${e.drinkName} ×${e.quantity}\n   ${choices(e)}${e.note ? `｜備註：${e.note}` : ""}\n   ${e.names.join("、")}｜${money(e.total)}`),
     `共 ${g.entries.reduce((s, e) => s + e.quantity, 0)} 杯｜預估 ${money(g.entries.reduce((s, e) => s + e.total, 0))}`,
     "實際供應與金額依門市現場為準。"
@@ -312,8 +312,8 @@ function downloadCsv() {
     const safe = /^[=+\-@\t\r]/.test(raw) ? `'${raw}` : raw;
     return `"${safe.replaceAll('"', '""')}"`;
   };
-  const rows = [["日期", "團名", "名字", "飲料", "杯型", "冷熱", "甜度", "冰量", "加料／奶類", "杯數", "單價", "金額", "備註"],
-    ...state.group.entries.map(e => [state.group.date, state.group.title, e.name, e.drinkName, e.size, e.temperature, sugarLabel(e.sugar), e.ice, addonNames(e).join("、"), e.quantity, e.unitPrice, e.total, e.note])];
+  const rows = [["日期", "團名", "名字", "飲料", "杯型", "冷熱", "甜度", "冰量", "加料／奶類", "杯數", "單價", "金額", "備註", "菜單每杯估價", "價格校正說明"],
+    ...state.group.entries.map(e => [state.group.date, state.group.title, e.name, e.drinkName, e.size, e.temperature, sugarLabel(e.sugar), e.ice, addonNames(e).join("、"), e.quantity, e.unitPrice, e.total, e.note, e.estimatedUnitPrice ?? e.unitPrice, e.priceNote ?? ""])];
   const blob = new Blob(["\ufeff" + rows.map(row => row.map(cell).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob); link.download = `青山飲料團_${state.group.date}.csv`;
@@ -352,6 +352,7 @@ async function removeEntry(id) {
 function openDrink(id, entry = null) {
   const drink = menu.drinks.find(d => d.id === id);
   if (!drink) return;
+  state.originalEntry = entry;
   state.draft = entry ? { ...entry, addons: [...entry.addons], editing: true } : {
     id: crypto.randomUUID(), drinkId: id, name: stored.name ?? "", size: Object.hasOwn(drink.prices, "L") ? "L" : "M",
     temperature: "冰", sugar: Math.max(30, drink.minSugar ?? 0), ice: drink.cap ? "少冰" : "少冰",
@@ -369,7 +370,9 @@ function openDrink(id, entry = null) {
     <fieldset><legend>額外加料 <small>可複選</small></legend><div class="addon-grid">${menu.addons.map(a => `<label class="addon-option"><input type="checkbox" name="addons" value="${a.id}" ${d.addons.includes(a.id) ? "checked" : ""}><span>${esc(a.name)}</span><small>+$${a.price}</small></label>`).join("")}</div></fieldset>
     ${drink.oatMilk ? `<label class="oat-option"><input type="checkbox" name="oatMilk" ${d.oatMilk ? "checked" : ""}><span>升級燕麥奶</span><small id="oat-price"></small></label>` : ""}
     <div class="field-row"><label>杯數<input name="quantity" type="number" min="1" max="20" step="1" value="${d.quantity}" required></label><label>備註 <span class="optional">選填</span><input name="note" maxlength="200" value="${esc(d.note)}" placeholder="特殊需求，主揪現場確認"></label></div>
+    ${state.group.isHost ? `<div class="field-row"><label>門市實際每杯單價 <span class="optional">選填</span><input name="actualUnitPrice" type="number" min="0" max="1000" step="1" value="${d.actualUnitPrice ?? ""}" placeholder="留空依 ATT 菜單計算"></label><label>價格校正說明<input name="priceNote" maxlength="100" value="${esc(d.priceNote ?? "")}" placeholder="例如：門市原價、活動折扣"></label></div>` : ""}
     <p class="form-error" id="drink-error" role="alert" hidden></p>
+    <p id="price-breakdown" class="fine-print"></p>
     <div class="dialog-footer"><div><span>每杯 <b id="unit-price"></b></span><strong id="draft-total"></strong></div><button class="button primary" id="submit-drink" type="submit">${d.editing ? "儲存修改" : "加入訂單"} <span aria-hidden="true">＋</span></button></div>
     <p class="fine-print">填單免登入；請在同一瀏覽器修改自己的飲料。</p>
   </form>`;
@@ -378,7 +381,7 @@ function openDrink(id, entry = null) {
   });
   document.querySelector("#drink-form").addEventListener("change", syncDraft);
   document.querySelector("#drink-form").addEventListener("input", event => {
-    if (event.target.name === "quantity") syncDraft();
+    if (["quantity", "actualUnitPrice"].includes(event.target.name)) syncDraft();
   });
   document.querySelector("#drink-form").addEventListener("submit", submitDrink);
   syncDraft();
@@ -416,14 +419,28 @@ function syncDraft() {
   d.quantity = Number(values.get("quantity"));
   const quantityValid = Number.isInteger(d.quantity) && d.quantity >= 1 && d.quantity <= 20;
   const oatPrice = d.oatMilk ? (d.size === "M" ? 10 : 15) : 0;
-  d.unitPrice = drink.prices[d.size] + d.addons.reduce((s, id) => s + menu.addons.find(a => a.id === id).price, 0) + oatPrice;
+  d.estimatedUnitPrice = drink.prices[d.size] + d.addons.reduce((s, id) => s + menu.addons.find(a => a.id === id).price, 0) + oatPrice;
+  if (state.group.isHost) d.actualUnitPrice = values.get("actualUnitPrice") === "" ? null : Number(values.get("actualUnitPrice"));
+  else if (state.originalEntry) {
+    const original = state.originalEntry;
+    const sameRecipe = ["drinkId", "size", "temperature", "sugar", "ice", "oatMilk"].every(key => original[key] === d[key]) &&
+      JSON.stringify([...original.addons].sort()) === JSON.stringify([...d.addons].sort());
+    d.actualUnitPrice = sameRecipe ? original.actualUnitPrice ?? null : null;
+  }
+  d.unitPrice = d.actualUnitPrice ?? d.estimatedUnitPrice;
   d.total = quantityValid ? d.unitPrice * d.quantity : 0;
   document.querySelector("#unit-price").textContent = `$${d.unitPrice}`;
   document.querySelector("#draft-total").textContent = quantityValid ? money(d.total) : "請輸入 1–20 杯";
+  document.querySelector("#price-breakdown").textContent = [
+    `茶飲 $${drink.prices[d.size]}`,
+    ...d.addons.map(id => { const addon = menu.addons.find(a => a.id === id); return `${addon.name} $${addon.price}`; }),
+    ...(oatPrice ? [`燕麥奶升級 $${oatPrice}`] : [])
+  ].join(" ＋ ") + (d.actualUnitPrice !== null && d.actualUnitPrice !== undefined ? `；主揪校正每杯 $${d.actualUnitPrice}` : "");
   const oat = document.querySelector("#oat-price");
   if (oat) oat.textContent = `+$${d.size === "M" ? 10 : 15}`;
   const button = document.querySelector("#submit-drink");
-  button.disabled = state.busy || !quantityValid || (!state.group.open && !state.group.isHost);
+  const actualValid = d.actualUnitPrice === null || d.actualUnitPrice === undefined || (Number.isInteger(d.actualUnitPrice) && d.actualUnitPrice >= 0 && d.actualUnitPrice <= 1000);
+  button.disabled = state.busy || !quantityValid || !actualValid || (!state.group.open && !state.group.isHost);
 }
 async function submitDrink(event) {
   event.preventDefault();
@@ -433,6 +450,7 @@ async function submitDrink(event) {
   const values = new FormData(form);
   const d = state.draft;
   d.name = String(values.get("name")).trim(); d.note = String(values.get("note")).trim();
+  if (state.group.isHost) d.priceNote = String(values.get("priceNote") ?? "").trim();
   const error = document.querySelector("#drink-error"); error.hidden = true;
   state.busy = true; syncDraft();
   const button = document.querySelector("#submit-drink"); button.textContent = "正在送出…";
@@ -459,6 +477,11 @@ dialog.addEventListener("click", event => {
     if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
   }
 });
+try {
+  Object.assign(menu, await api("/api/menu"));
+} catch {
+  toast("暫時無法確認最新門市價目，先顯示已核對的 ATT 價格");
+}
 if (groupId) {
   refresh(true);
   setInterval(() => { if (!document.hidden && !state.busy) refresh(); }, 10000);

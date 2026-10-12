@@ -24,12 +24,12 @@ try {
   check(read.status === 200 && read.data.isHost === false && !JSON.stringify(read.data).includes(group.hostKey), "分享讀取不洩漏管理金鑰");
   const entry = { id: randomUUID(), name: "甲", drinkId: "spring-qing", size: "L", temperature: "冰", sugar: 30, ice: "少冰", addons: ["amber"], oatMilk: false, quantity: 2, note: "", total: 1 };
   const added = await request(`${path}/entries`, "POST", entry);
-  check(added.status === 201 && added.data.total === 90, "伺服器重算單價與兩杯金額");
+  check(added.status === 201 && added.data.total === 100, "伺服器依 ATT 價格重算兩杯金額");
   const duplicate = await Promise.all(Array.from({ length: 4 }, () => request(`${path}/entries`, "POST", entry)));
   const afterDuplicate = await request(path);
   check(duplicate.every(r => r.status === 200) && afterDuplicate.data.entries.length === 1, "重送／併發同筆不重複新增");
   const changed = await request(`${path}/entries/${entry.id}`, "PUT", { ...entry, version: 1, quantity: 3 });
-  check(changed.status === 200 && changed.data.total === 135 && changed.data.version === 2, "原填單者可修改");
+  check(changed.status === 200 && changed.data.total === 150 && changed.data.version === 2, "原填單者可修改");
   const stolen = await request(`${path}/entries/${entry.id}`, "PUT", { ...entry, version: 2 }, { "X-Edit-Key": stranger });
   check(stolen.status === 403, "其他裝置不能修改別人的飲料");
   const stale = await request(`${path}/entries/${entry.id}`, "PUT", { ...entry, version: 1 });
@@ -44,7 +44,7 @@ try {
   const ownClosedEdit = await request(`${path}/entries/${entry.id}`, "PUT", { ...entry, version: 2 });
   check(afterClose.status === 409 && ownClosedEdit.status === 409, "截止後後端拒絕新單與同事修改");
   const hostEdit = await request(`${path}/entries/${entry.id}`, "PUT", { ...entry, version: 2, quantity: 1 }, host);
-  check(hostEdit.status === 200 && hostEdit.data.total === 45, "主揪可修正截止後的訂單");
+  check(hostEdit.status === 200 && hostEdit.data.total === 50, "主揪可修正截止後的訂單");
   const reopened = await request(path, "PATCH", { status: "open", clearDeadline: true }, host);
   check(reopened.status === 200 && reopened.data.open, "重新開放收單");
   const concurrent = await Promise.all(Array.from({ length: 8 }, (_, i) => request(`${path}/entries`, "POST", { ...entry, id: randomUUID(), name: `同事 ${i}`, quantity: 1 })));
@@ -66,6 +66,16 @@ try {
   check(expired.status === 409 && !(await request(`/api/groups/${timedGroup.id}`)).data.open, "伺服器依截止時間拒絕填單");
   const timedReopen = await request(`/api/groups/${timedGroup.id}`, "PATCH", { status: "open", clearDeadline: true }, { "X-Host-Key": timedGroup.hostKey });
   check(timedReopen.status === 200 && timedReopen.data.open && timedReopen.data.deadline === null, "到期團可清除截止時間再開放");
+  const repriced = await request(`${path}/entries/${final.data.entries[1].id}`, "PUT", {
+    ...final.data.entries[1], actualUnitPrice: 55, priceNote: "門市實付"
+  }, host);
+  check(repriced.status === 200 && repriced.data.unitPrice === 55 && repriced.data.estimatedUnitPrice === 50, "主揪可記錄實付單價並保留菜單價");
+  const tampered = await request(`${path}/entries/${repriced.data.id}`, "PUT", {
+    ...repriced.data, actualUnitPrice: 1, priceNote: "自行改價"
+  });
+  check(tampered.status === 200 && tampered.data.unitPrice === 55, "同事不能覆蓋主揪實付單價");
+  const noteUpdate = await request(path, "PATCH", { note: "信義 ATT 店價目" }, host);
+  check(noteUpdate.status === 200 && noteUpdate.data.note === "信義 ATT 店價目" && noteUpdate.data.open, "主揪更新門市備註不改收單狀態");
   console.log(`\n${passed} 個整合檢查通過`);
 } finally {
   if (timedGroup?.id) {

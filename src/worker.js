@@ -1,5 +1,5 @@
 import { menu } from "../public/menu.js";
-import { AppError, validId, text, groupInput, quoteEntry, isOpen } from "./domain.js";
+import { AppError, validId, text, groupInput, quoteEntry, isOpen, withActualPrice } from "./domain.js";
 
 const headers = {
   "Cache-Control": "no-store",
@@ -42,7 +42,8 @@ async function groupResult(db, group, host) {
   return {
     id: group.id, title: group.title, date: group.date, hostName: group.host_name,
     status: group.status, deadline: group.deadline, note: group.note, createdAt: group.created_at,
-    open: isOpen(group), isHost: host, entries: result.results.map(outputEntry), serverTime: now()
+    open: isOpen(group), isHost: host, branch: menu.branch, menuVersion: menu.version,
+    entries: result.results.map(outputEntry), serverTime: now()
   };
 }
 function enforceOrigin(request, env) {
@@ -107,14 +108,15 @@ async function route(request, env, url) {
   if (!isEntries && method === "PATCH") {
     if (!isHost) throw new AppError("只有主揪可以管理收單狀態", 403);
     const input = await body(request);
-    if (!["open", "closed"].includes(input.status)) throw new AppError("收單狀態不正確");
+    if (input.status !== undefined && !["open", "closed"].includes(input.status)) throw new AppError("收單狀態不正確");
+    const note = input.note === undefined ? null : text(input.note, 300, "團購備註");
     if (input.clearDeadline === true) group.deadline = null;
     if (input.status === "open" && group.deadline && new Date(group.deadline).valueOf() <= Date.now()) {
       throw new AppError("原截止時間已過；重新開放時需清除截止時間");
     }
-    await DB.prepare("UPDATE groups SET status = ?, deadline = ? WHERE id = ?").bind(input.status, group.deadline, group.id).run();
-    group.status = input.status;
-    return json(await groupResult(DB, group, true));
+    await DB.prepare("UPDATE groups SET status = COALESCE(?, status), note = COALESCE(?, note), deadline = CASE WHEN ? = 1 THEN NULL ELSE deadline END WHERE id = ?")
+      .bind(input.status ?? null, note, input.clearDeadline === true ? 1 : 0, group.id).run();
+    return json(await groupResult(DB, await getGroup(DB, group.id), true));
   }
   if (!isEntries && method === "DELETE") {
     if (!isHost) throw new AppError("只有主揪可以刪除整團", 403);
@@ -136,7 +138,7 @@ async function route(request, env, url) {
       return json(outputEntry(existing));
     }
     if (!isOpen(group)) throw new AppError("已截止收單，請聯絡主揪", 409);
-    const data = quoteEntry(input);
+    const data = withActualPrice(quoteEntry(input), input, null, isHost);
     const timestamp = now();
     const result = await DB.prepare(
       `INSERT INTO entries (id, group_id, owner_hash, data, created_at, updated_at)
@@ -166,7 +168,7 @@ async function route(request, env, url) {
     let result;
     let data;
     if (method === "PUT") {
-      data = quoteEntry(input);
+      data = withActualPrice(quoteEntry(input), input, JSON.parse(entry.data), isHost);
       result = await DB.prepare(`UPDATE entries SET data = ?, version = version + 1, updated_at = ? WHERE ${condition}`)
         .bind(JSON.stringify(data), timestamp, group.id, entry.id, input.version, group.id, isHost ? 1 : 0, timestamp).run();
     } else {

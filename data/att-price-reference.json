@@ -1,0 +1,393 @@
+{
+  "sourceUrl": "https://order.nidin.shop/menu/27427",
+  "linkedFrom": "https://peak-tea.com/all-stores/?paged=6",
+  "branch": "信義ATT店",
+  "checkedAt": "2026-10-12",
+  "menuVersion": {
+    "stamp": 363644471,
+    "time": "2026-10-07 15:17:06"
+  },
+  "drinks": [
+    {
+      "id": "spring-qing",
+      "name": "春青",
+      "prices": {
+        "M": 35,
+        "L": 40
+      }
+    },
+    {
+      "id": "summer-qing",
+      "name": "夏青",
+      "prices": {
+        "M": 35,
+        "L": 40
+      }
+    },
+    {
+      "id": "autumn-qing",
+      "name": "秋青",
+      "prices": {
+        "M": 45,
+        "L": 50
+      }
+    },
+    {
+      "id": "winter-qing",
+      "name": "冬青",
+      "prices": {
+        "M": 60,
+        "L": 65
+      }
+    },
+    {
+      "id": "chrysanthemum",
+      "name": "東方菊花茶",
+      "prices": {
+        "M": 50,
+        "L": 60
+      }
+    },
+    {
+      "id": "buckwheat",
+      "name": "西穀蕎麥茶",
+      "prices": {
+        "M": 35,
+        "L": 45
+      }
+    },
+    {
+      "id": "rooibos",
+      "name": "南非國寶茶",
+      "prices": {
+        "M": 45,
+        "L": 55
+      }
+    },
+    {
+      "id": "osmanthus-genmai",
+      "name": "北風桂花玄米茶",
+      "prices": {
+        "M": 40,
+        "L": 50
+      }
+    },
+    {
+      "id": "green",
+      "name": "綠水",
+      "prices": {
+        "M": 30,
+        "L": 35
+      }
+    },
+    {
+      "id": "black",
+      "name": "天蟬紅茶",
+      "prices": {
+        "M": 40,
+        "L": 45
+      }
+    },
+    {
+      "id": "milk-tea",
+      "name": "山峰奶茶",
+      "prices": {
+        "M": 50,
+        "L": 55
+      }
+    },
+    {
+      "id": "summer-latte",
+      "name": "夏青那堤",
+      "prices": {
+        "M": 55,
+        "L": 65
+      }
+    },
+    {
+      "id": "buckwheat-latte",
+      "name": "蕎麥那堤",
+      "prices": {
+        "M": 55,
+        "L": 70
+      }
+    },
+    {
+      "id": "black-latte",
+      "name": "天蟬那堤",
+      "prices": {
+        "M": 60,
+        "L": 70
+      }
+    },
+    {
+      "id": "agar-spring",
+      "name": "菜燕春青",
+      "prices": {
+        "M": 45,
+        "L": 50
+      }
+    },
+    {
+      "id": "agar-milk",
+      "name": "菜燕奶茶",
+      "prices": {
+        "M": 60,
+        "L": 65
+      }
+    },
+    {
+      "id": "almond-spring",
+      "name": "杏仁凍春青",
+      "prices": {
+        "M": 45,
+        "L": 50
+      }
+    },
+    {
+      "id": "green-jelly-milk",
+      "name": "青茶婚貴奶茶",
+      "prices": {
+        "M": 60,
+        "L": 65
+      }
+    },
+    {
+      "id": "amber-milk",
+      "name": "琥珀珍珠奶茶",
+      "prices": {
+        "M": 60,
+        "L": 65
+      }
+    },
+    {
+      "id": "buckwheat-pearl-milk",
+      "name": "蕎麥珍珠奶茶",
+      "prices": {
+        "M": 65,
+        "L": 70
+      }
+    },
+    {
+      "id": "jelly-black-latte",
+      "name": "青茶凍天蟬那堤",
+      "prices": {
+        "M": 70,
+        "L": 80
+      }
+    },
+    {
+      "id": "amber-black-latte",
+      "name": "琥珀珍珠天蟬那堤",
+      "prices": {
+        "M": 70,
+        "L": 80
+      }
+    },
+    {
+      "id": "buckwheat-summer-latte",
+      "name": "蕎麥珍珠夏青那堤",
+      "prices": {
+        "M": 70,
+        "L": 80
+      }
+    },
+    {
+      "id": "buckwheat-cap-green",
+      "name": "蕎麥奶蓋 綠水",
+      "prices": {
+        "M": 50,
+        "L": 55
+      }
+    },
+    {
+      "id": "buckwheat-cap-genmai",
+      "name": "蕎麥奶蓋 玄米茶",
+      "prices": {
+        "M": 60,
+        "L": 70
+      }
+    },
+    {
+      "id": "salt-cap-spring",
+      "name": "海鹽奶蓋 春青",
+      "prices": {
+        "M": 55,
+        "L": 60
+      }
+    },
+    {
+      "id": "salt-cap-black",
+      "name": "海鹽奶蓋 紅茶",
+      "prices": {
+        "M": 60,
+        "L": 65
+      }
+    },
+    {
+      "id": "salt-cap-apple",
+      "name": "海鹽奶蓋 輕蘋香茶",
+      "prices": {
+        "M": 85
+      }
+    },
+    {
+      "id": "peak-green",
+      "name": "青山綠水",
+      "prices": {
+        "M": 40,
+        "L": 45
+      }
+    },
+    {
+      "id": "spring-chrysanthemum",
+      "name": "春青菊花",
+      "prices": {
+        "M": 50,
+        "L": 60
+      }
+    },
+    {
+      "id": "buckwheat-wintermelon",
+      "name": "蕎麥冬露",
+      "prices": {
+        "L": 55
+      }
+    },
+    {
+      "id": "spring-wintermelon",
+      "name": "春青冬露",
+      "prices": {
+        "L": 55
+      }
+    },
+    {
+      "id": "chrysanthemum-wintermelon",
+      "name": "菊花冬露",
+      "prices": {
+        "L": 60
+      }
+    },
+    {
+      "id": "yakult-green",
+      "name": "多多綠水",
+      "prices": {
+        "L": 60
+      }
+    },
+    {
+      "id": "sugarcane-spring",
+      "name": "白甘蔗春青",
+      "prices": {
+        "M": 60,
+        "L": 65
+      }
+    },
+    {
+      "id": "lemon-green",
+      "name": "香檸綠水",
+      "prices": {
+        "M": 60,
+        "L": 65
+      }
+    },
+    {
+      "id": "orange-green",
+      "name": "柳丁綠水",
+      "prices": {
+        "M": 70,
+        "L": 75
+      }
+    },
+    {
+      "id": "grapefruit-green",
+      "name": "紅柚綠水",
+      "prices": {
+        "M": 70,
+        "L": 75
+      }
+    },
+    {
+      "id": "orange-spring",
+      "name": "橘子春青",
+      "prices": {
+        "M": 70,
+        "L": 75
+      }
+    },
+    {
+      "id": "lychee-spring",
+      "name": "荔枝春青",
+      "prices": {
+        "M": 75,
+        "L": 80
+      }
+    },
+    {
+      "id": "pear-spring",
+      "name": "水梨春青",
+      "prices": {
+        "M": 75,
+        "L": 80
+      }
+    },
+    {
+      "id": "apple-tea",
+      "name": "輕蘋香茶",
+      "prices": {
+        "M": 80,
+        "L": 85
+      }
+    },
+    {
+      "id": "peach-summer",
+      "name": "水蜜桃夏青",
+      "prices": {
+        "M": 80,
+        "L": 85
+      }
+    }
+  ],
+  "addons": [
+    {
+      "id": "amber",
+      "name": "琥珀珍珠",
+      "price": 10
+    },
+    {
+      "id": "buckwheat-pearl",
+      "name": "蕎麥珍珠",
+      "price": 15
+    },
+    {
+      "id": "salt-cap",
+      "name": "海鹽奶蓋",
+      "price": 20
+    },
+    {
+      "id": "buckwheat-cap",
+      "name": "蕎麥奶蓋",
+      "price": 20
+    },
+    {
+      "id": "agar",
+      "name": "菜燕",
+      "price": 10
+    },
+    {
+      "id": "tea-jelly",
+      "name": "青茶茶凍",
+      "price": 10
+    },
+    {
+      "id": "green-jelly",
+      "name": "青茶婚貴",
+      "price": 10
+    },
+    {
+      "id": "almond",
+      "name": "杏仁凍",
+      "price": 10
+    }
+  ]
+}

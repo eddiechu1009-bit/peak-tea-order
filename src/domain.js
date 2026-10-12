@@ -74,3 +74,20 @@ export function quoteEntry(input) {
 export function isOpen(group, now = Date.now()) {
   return group.status === "open" && (!group.deadline || new Date(group.deadline).valueOf() > now);
 }
+
+export function withActualPrice(quote, input, previous, isHost) {
+  const sameRecipe = previous && ["drinkId", "size", "temperature", "sugar", "ice", "oatMilk"]
+    .every(key => previous[key] === quote[key]) &&
+    JSON.stringify([...previous.addons].sort()) === JSON.stringify([...quote.addons].sort());
+  let actualUnitPrice = sameRecipe ? previous.actualUnitPrice ?? null : null;
+  let priceNote = actualUnitPrice === null ? "" : previous.priceNote ?? "";
+  if (isHost && Object.hasOwn(input, "actualUnitPrice")) {
+    actualUnitPrice = input.actualUnitPrice;
+    if (actualUnitPrice !== null && (!Number.isInteger(actualUnitPrice) || actualUnitPrice < 0 || actualUnitPrice > 1000)) {
+      throw new AppError("門市實際單價需為 0–1,000 元的整數");
+    }
+    priceNote = actualUnitPrice === null ? "" : text(input.priceNote ?? "", 100, "價格校正說明", true);
+  }
+  const unitPrice = actualUnitPrice ?? quote.unitPrice;
+  return { ...quote, estimatedUnitPrice: quote.unitPrice, actualUnitPrice, priceNote, unitPrice, total: unitPrice * quote.quantity, menuVersion: menu.version };
+}
