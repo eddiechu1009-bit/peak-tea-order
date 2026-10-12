@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "peak-tea-order",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-12",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://eddiechu1009-bit.github.io"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "peak-tea-order-db",
+      "database_id": "733ba9ca-b32c-4cc5-ac03-63da576c7b6e",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

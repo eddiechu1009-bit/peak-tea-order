@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" fill="none">
+  <ellipse cx="300" cy="452" rx="202" ry="25" fill="#d9dfcc"/>
+  <path d="m38 387 125-174 91 137 90-199 166 236Z" fill="#dae2ce"/>
+  <path d="m223 387 91-155 132 155Z" fill="#c3d0b4"/>
+  <circle cx="450" cy="92" r="39" fill="#e7c6a6"/>
+  <g transform="rotate(-9 259 267)">
+    <path d="M168 145h165l-18 264a24 24 0 0 1-24 23h-80a24 24 0 0 1-24-23Z" fill="#f8faf4" stroke="#52745b" stroke-width="3"/>
+    <path d="M182 219h137l-13 185a15 15 0 0 1-15 14h-78a15 15 0 0 1-15-14Z" fill="#dfb267"/>
+    <path d="M182 216c48-18 87 16 137 0v18H182Z" fill="#eec78a"/>
+    <rect x="157" y="131" width="187" height="24" rx="12" fill="#234b3b"/>
+    <path d="M285 49h11v84h-11Z" fill="#ce925f"/>
+    <rect x="203" y="263" width="101" height="103" rx="5" fill="#f7f5eb"/>
+    <path d="m225 319 18-30 12 19 11-16 18 27Z" fill="#52745b"/>
+    <path d="M225 335h59m-45 11h30" stroke="#52745b" stroke-width="3"/>
+  </g>
+  <g transform="rotate(8 391 330)">
+    <path d="M325 230h139l-16 186a20 20 0 0 1-20 19h-67a20 20 0 0 1-20-19Z" fill="#f8faf4" stroke="#52745b" stroke-width="3"/>
+    <path d="M337 266h113l-13 145a13 13 0 0 1-13 12h-60a13 13 0 0 1-13-12Z" fill="#b79872"/>
+    <rect x="316" y="215" width="157" height="24" rx="12" fill="#234b3b"/>
+    <path d="M375 146h10v71h-10Z" fill="#ce925f"/>
+    <rect x="357" y="295" width="77" height="83" rx="4" fill="#f7f5eb"/>
+    <path d="m374 341 14-23 10 15 8-12 13 20Z" fill="#52745b"/>
+    <circle cx="365" cy="405" r="7" fill="#695645"/><circle cx="386" cy="402" r="7" fill="#695645"/><circle cx="411" cy="406" r="7" fill="#695645"/>
+  </g>
+  <path d="M111 124c20-37 52-34 47-7-4 21-26 32-47 7Zm-3 13c-27-20-49-6-33 15 12 17 30 14 33-15Z" fill="#769070"/>
+  <path d="m105 172 9-51" stroke="#52745b" stroke-width="3" stroke-linecap="round"/>
+</svg>
